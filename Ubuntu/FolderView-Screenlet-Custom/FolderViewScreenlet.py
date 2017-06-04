@@ -18,10 +18,18 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
 
-#TODO
-#No todo at the moment
+#-------------------------------------------
+# NOTES
+#-------------------------------------------
+#
+# Modified by Lenny Evans - lenny.evans3@gmail.com
+# 	- Double-click on icons instead of single-click
+#
+# TODO:
+# 	- Use system double-click sensitivity instead of defaulting to 400ms - LE
+#
 
-
+import time
 import screenlets
 from screenlets import Tooltip
 from screenlets.options import StringOption, FontOption, BoolOption, IntOption, ColorOption, DirectoryOption, ListOption
@@ -127,6 +135,8 @@ class FolderViewScreenlet(screenlets.Screenlet):
 	__drag_icon_mask = None
 	__drag_sel = None
 	__update_interval = 1 # every second
+	click_count = 0
+	click_time = 0
 
 	# constructor
 	def __init__(self, **keyword_args):
@@ -810,8 +820,7 @@ class FolderViewScreenlet(screenlets.Screenlet):
 #-------------------------------------------
 
 	def click_callback(self):
-		'''	Callback when click
-		'''
+		# Callback when click
 		elem = self.get_selected_element()
 		if elem:
 			if str(elem[0].get_path()).lower().endswith('.desktop'):
@@ -828,7 +837,7 @@ class FolderViewScreenlet(screenlets.Screenlet):
 
 
 
-	def right_clicl_callback(self):
+	def right_click_callback(self):
 		self.menu = gtk.Menu()
 		elem = self.get_selected_element()
 		if elem:
@@ -848,48 +857,75 @@ class FolderViewScreenlet(screenlets.Screenlet):
 
 
 	def on_mouse_down(self, event):
-		"""Called when a buttonpress-event occured in Screenlet's window. 
-		Returning True causes the event to be not further propagated."""
+		# Called when a buttonpress-event occured in Screenlet's window. 
+		# Returning True causes the event to be not further propagated.
 		self.set_current_cursor(event,self.window) 
 		if event.type == gtk.gdk.BUTTON_PRESS:
-			if event.button == 1:
-				if self.lock_position:
-					self.clicked = True
-				else:
-					self.click_callback()
-	
-		
-					#self.update_scrollbar()	
-					self.clicked = False
-					return False
+			if event.button == 1:	# Left click
+				if self.lock_position:	# If screenlet window is locked...
+					
+					# If screenlet window click count is 1, get elapsed time between now and
+					# the first click. If it's less than 400 millis, increment, else reset...
+					if self.click_count == 1:
+						elapsed = (time.time() - self.click_time)
+
+						if elapsed < .4:
+							self.click_count += 1
+							#print('Click count was 1, now')
+							#print(elapsed)
+							#print('time elapsed so click count is: ')
+							#print(self.click_count)
+							self.clicked = True
+						else:
+							#print('Click count was 1, now 0 because')
+							#print(elapsed)
+							#print('time elapsed.')
+							self.click_count = 0
+							self.clicked = False
+
+					# If screenlet window click count is 0, increment and get the time...
+					if self.click_count == 0:
+						self.click_count += 1
+						#print('Click count was 0, now: ')
+						#print(self.click_count)
+						self.click_time = time.time();
+				#else:
+					#self.click_callback
+					#self.update_scrollbar()
+					#self.clicked = False
+					#return False
 	
 			elif event.button == 3:
 				self.clicked = True
-				self.right_clicl_callback()
+				self.right_click_callback()
+
 		elif event.type == gtk.gdk._2BUTTON_PRESS:
 			elem = self.get_selected_element()
+
 			if not elem and self.mousey < self.banner_size:
 				os.system('xdg-open ' +chr(34) +self.folder_path_current + chr(34))
 
 
-	def on_mouse_up(self, event):
 
+	def on_mouse_up(self, event):
 		self.set_current_cursor(event,self.window) 
 		if event.type == gtk.gdk.BUTTON_RELEASE:
 			if event.button == 1:
-				if self.lock_position:
-					self.click_callback()
-	
-					#self.update_scrollbar()	
-					self.clicked = False
-					return False
-				else:
-					self.clicked = True
+				if self.lock_position:	# If screenlet window is locked...
+					# If clicked twice, accept double-click as complete, do the callback
+					# and reset status and count...
+					if self.click_count == 2:
+						self.click_callback()
+						self.click_count = 0
+						#self.update_scrollbar()
+						self.clicked = False
+						return False
+				#else:
+					#self.clicked = True
 
-	
 			elif event.button == 3:
 				self.clicked = True
-				self.right_clicl_callback()
+				self.right_click_callback()
 
 		elif event.type == gtk.gdk._2BUTTON_PRESS:
 			
