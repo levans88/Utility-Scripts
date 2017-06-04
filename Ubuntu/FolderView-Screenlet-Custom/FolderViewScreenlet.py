@@ -138,6 +138,7 @@ class FolderViewScreenlet(screenlets.Screenlet):
 	click_count = 0
 	click_time = 0
 	show_line = 0
+	use_desktop_file_name_field = 1
 
 	# constructor
 	def __init__(self, **keyword_args):
@@ -201,6 +202,8 @@ class FolderViewScreenlet(screenlets.Screenlet):
 		self.add_option(BoolOption(_('Folder'),'full_path', self.full_path, _('Display full path name in banner'), '',))
 
 		self.add_option(BoolOption(_('Folder'),'show_line', self.show_line, _('Underline Title'), '',))
+
+		self.add_option(BoolOption(_('Folder'),'use_desktop_file_name_field', self.use_desktop_file_name_field, _('Use name field from .desktop file'), '',))
 
 		self.add_options_group(_('Look'), _('Settings colors and fonts'))
 
@@ -534,6 +537,7 @@ class FolderViewScreenlet(screenlets.Screenlet):
 				f.write('border_color=' + str(self.border_color).replace('[','(').replace(']',')') + '\n')
 				f.write('show_title=' + str(self.show_title) + '\n')
 				f.write('show_line=' + str(self.show_line) + '\n')
+				f.write('use_desktop_file_name_field=' + str(self.use_desktop_file_name_field) + '\n')
 				f.write('expand=' + str(self.expand) +'\n')
 				f.write('banner_size=' + str(self.banner_size) + '\n')
 
@@ -558,8 +562,8 @@ class FolderViewScreenlet(screenlets.Screenlet):
 #-------------------------------------------
 
 	def populate_list(self, path):
-		'''	Generate the list of GFile and GFileInfos
-		'''		
+		# Generate the list of GFile and GFileInfos
+		# Used when creating a new FolderView	
 
 		parent = gio.File(path)
 		self.files_list_show = []
@@ -645,10 +649,16 @@ class FolderViewScreenlet(screenlets.Screenlet):
 
 	def gnomedesk_get(self,path):
 		f = open(path, "r")
-		tmp = f.readlines(2000)
+
+		# Removed former sizehint of 2000 bytes as it was failing to read full .desktop files
+		# containing many "Comment" lines (ex: mate-system-monitor > 14000 bytes). 
+		tmp = f.readlines()
+		
 		f.close()
 		ico = ''
 		exe = ''
+		found_name = False;
+
 		for line in tmp:
 			if line.startswith('Icon='):
 				ico = line.replace('Icon=','').replace('\n','')
@@ -657,8 +667,9 @@ class FolderViewScreenlet(screenlets.Screenlet):
 				exe = line.replace('Exec=','').replace('\n','')
 
 			elif line.startswith('Name='):
-				name = line.replace('Name=','').replace('\n','')
-			
+				if found_name == False:
+					found_name = True;
+					name = line.replace('Name=','').replace('\n','')			
 
 		return ico,exe,name
 
@@ -667,7 +678,6 @@ class FolderViewScreenlet(screenlets.Screenlet):
 
 	def gnomedesk_get_icon(self,path):
 		return self.gnomedesk_get(path)[0]
-
 
 	def gnomedesk_get_exe(self,path):
 		return self.gnomedesk_get(path)[1]
@@ -741,8 +751,13 @@ class FolderViewScreenlet(screenlets.Screenlet):
 		'''	Generate the name of a file from a (GFile, GFileInfo)
 		'''
 		info = tuble[1].get_name()
+
 		if info.lower().endswith('.desktop'):
-			info = self.gnomedesk_get_name(tuble[0].get_path())#info[:info.lower().find('.desktop')]
+			if self.use_desktop_file_name_field == True:
+				info = self.gnomedesk_get_name(tuble[0].get_path())
+				#info[:info.lower().find('.desktop')]
+			else:
+				info = info.split(".")[0]
 		return info
 
 
@@ -1048,7 +1063,7 @@ class FolderViewScreenlet(screenlets.Screenlet):
 
 		if self.has_started:
 
-			if name in  ['folder_path','expand','pericons','showbyex','banner_size','sb_row','sb_column','show_title', 'show_line','showbyex']:
+			if name in  ['folder_path','expand','pericons','showbyex','banner_size','sb_row','sb_column','show_title','show_line','showbyex','use_desktop_file_name_field']:
 				self.update_path_from_settings()
 				if self.expand2 == _('Use a scrollbar'):
 					self.update_scrollbar()	
