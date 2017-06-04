@@ -123,7 +123,7 @@ class FolderViewScreenlet(screenlets.Screenlet):
 	expand = 'horizontal'
 	showtip = False
 	showthumb = True
-	show_title = True
+	show_title = False
 	files_list_show_reversed = []
 	name = ''
 	timer1 = None
@@ -137,6 +137,7 @@ class FolderViewScreenlet(screenlets.Screenlet):
 	__update_interval = 1 # every second
 	click_count = 0
 	click_time = 0
+	show_line = 0
 
 	# constructor
 	def __init__(self, **keyword_args):
@@ -199,6 +200,7 @@ class FolderViewScreenlet(screenlets.Screenlet):
 
 		self.add_option(BoolOption(_('Folder'),'full_path', self.full_path, _('Display full path name in banner'), '',))
 
+		self.add_option(BoolOption(_('Folder'),'show_line', self.show_line, _('Underline Title'), '',))
 
 		self.add_options_group(_('Look'), _('Settings colors and fonts'))
 
@@ -531,6 +533,7 @@ class FolderViewScreenlet(screenlets.Screenlet):
 				f.write('width=' + str(self.width) + '\n')
 				f.write('border_color=' + str(self.border_color).replace('[','(').replace(']',')') + '\n')
 				f.write('show_title=' + str(self.show_title) + '\n')
+				f.write('show_line=' + str(self.show_line) + '\n')
 				f.write('expand=' + str(self.expand) +'\n')
 				f.write('banner_size=' + str(self.banner_size) + '\n')
 
@@ -940,7 +943,9 @@ class FolderViewScreenlet(screenlets.Screenlet):
 		#	self.thumbnailer = thumbnailengine(self.icon_size)
 		#	self.thumbnailer.connect("worklist-finished", lambda m: self.icons_changed(0))
 		#self.window.window.set_keep_above(0)
-		gobject.timeout_add(1000, self.finish)
+
+		# Timeout formerly 1000, not seeing any consequences but leaving a note in case - LE
+		gobject.timeout_add(0, self.finish)
 
 
 	def finish(self):
@@ -961,7 +966,10 @@ class FolderViewScreenlet(screenlets.Screenlet):
 			self.scrollbar.modify_bg(gtk.STATE_ACTIVE,  gtk.gdk.Color(self.color_title[0]*65535,self.color_title[1]*65535,self.color_title[2]*65535,0)) # cor da seta a funcionar
 			self.scrollbar.modify_bg(gtk.STATE_INSENSITIVE,  gtk.gdk.Color(self.frame_color[0]*65535,self.frame_color[1]*65535,self.frame_color[2]*65535,0)) # cor da seta a nao funcionar
 			self.scrollbar.modify_fg(gtk.STATE_NORMAL,  gtk.gdk.Color(self.color_title[0]*65535,self.color_title[1]*65535,self.color_title[2]*65535,0)) 
-
+		
+		# Automatically redraw after init (remove requirement for mouse over to finish drawing)
+		self.redraw_canvas()
+		
 		return False
 		
 
@@ -1040,7 +1048,7 @@ class FolderViewScreenlet(screenlets.Screenlet):
 
 		if self.has_started:
 
-			if name in  ['folder_path','expand','pericons','showbyex','banner_size','sb_row','sb_column','show_title','showbyex']:
+			if name in  ['folder_path','expand','pericons','showbyex','banner_size','sb_row','sb_column','show_title', 'show_line','showbyex']:
 				self.update_path_from_settings()
 				if self.expand2 == _('Use a scrollbar'):
 					self.update_scrollbar()	
@@ -1189,37 +1197,49 @@ class FolderViewScreenlet(screenlets.Screenlet):
 	def redraw_background(self):
 		# create context
 		self.ctx_back = self.__buffer_back.cairo_create()
+
 		# clear context
 		self.clear_cairo_context(self.ctx_back)
+
 		# compose background
 		self.ctx_back.set_operator(cairo.OPERATOR_OVER)
 		self.ctx_back.scale(self.scale, self.scale)
 		self.ctx_back.set_source_rgba(*self.frame_color)
 
-		if self.full_path == True:
-			bt = str(self.folder_path_current)
+		# Determine title/path to show: full, truncated, or none
+		if self.show_title == True:
+			if self.full_path == True:
+				bt = str(self.folder_path_current)
+			else:
+				bt = str(self.folder_path_current).split('/')[len(str(self.folder_path_current).split('/'))-1]
 		else:
-			bt = str(self.folder_path_current).split('/')[len(str(self.folder_path_current).split('/'))-1]
+			bt = ""
 
 		if self.show_back and self.image_filename != "":
-		
 			self.draw_scaled_image(self.ctx_back,0 ,0, urllib.unquote(self.image_filename.replace('file://','')), self.width-10+self.shadow_size, self.height-10+self.shadow_size)	
 		else:
 			self.ctx_back.set_source_rgba(*self.frame_color)
 			self.draw_rectangle_advanced (self.ctx_back, 0, 0, self.width-(self.border_size + self.shadow_size)*2, self.height-(self.border_size + self.shadow_size)*2,
 			rounded_angles=(self.rounda,self.rounda,self.rounda,self.rounda), fill=True, border_size=self.border_size, border_color=(self.border_color[0],self.border_color[1],self.border_color[2],self.border_color[3]),
 			shadow_size=self.shadow_size, shadow_color=(self.shadow_color[0],self.shadow_color[1],self.shadow_color[2],self.shadow_color[3]))
-
 			self.ctx_back.set_source_rgba(1-self.color_title[0],1-self.color_title[1],1-self.color_title[2],0.3)
-			self.draw_line(self.ctx_back,10,self.banner_size +2 ,self.width-30,0,line_width = 1,close=False,preserve=False)
+			
+			if self.show_line and bt != "":
+				self.draw_line(self.ctx_back,10,self.banner_size +2 ,self.width-30,0,line_width = 1,close=False,preserve=False)
+			
 			self.ctx_back.set_source_rgba(*self.color_title)
-			self.draw_text(self.ctx_back, bt, 			# self.ctx_back, texte
-				10, 			# x
-				10,			# y
-				self.title_font, 				# font
-				int(self.banner_size * 0.4) , int(self.width-10) ,		# size, width
-				alignment=pango.ALIGN_LEFT, ellipsize=pango.ELLIPSIZE_END,title=True)
-			self.draw_line(self.ctx_back,10,self.banner_size +2 ,self.width-30,0,line_width = 1,close=False,preserve=False)
+			
+			# If title or path string isn't empty, draw it, and optionally underline it... 
+			if bt != "":
+				self.draw_text(self.ctx_back, bt, 			# self.ctx_back, texte
+					10, 			# x
+					10,			# y
+					self.title_font, 				# font
+					int(self.banner_size * 0.4) , int(self.width-10) ,		# size, width
+					alignment=pango.ALIGN_LEFT, ellipsize=pango.ELLIPSIZE_END,title=True)
+			
+				if self.show_line:
+					self.draw_line(self.ctx_back,10,self.banner_size +2 ,self.width-30,0,line_width = 1,close=False,preserve=False)
 
 
 	def redraw_foreground(self):
