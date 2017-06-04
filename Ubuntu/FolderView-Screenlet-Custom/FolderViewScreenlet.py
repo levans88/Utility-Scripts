@@ -871,23 +871,14 @@ class FolderViewScreenlet(screenlets.Screenlet):
 
 						if elapsed < .4:
 							self.click_count += 1
-							#print('Click count was 1, now')
-							#print(elapsed)
-							#print('time elapsed so click count is: ')
-							#print(self.click_count)
 							self.clicked = True
 						else:
-							#print('Click count was 1, now 0 because')
-							#print(elapsed)
-							#print('time elapsed.')
 							self.click_count = 0
 							self.clicked = False
 
 					# If screenlet window click count is 0, increment and get the time...
 					if self.click_count == 0:
 						self.click_count += 1
-						#print('Click count was 0, now: ')
-						#print(self.click_count)
 						self.click_time = time.time();
 				#else:
 					#self.click_callback
