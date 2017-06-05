@@ -167,6 +167,7 @@ class FolderViewScreenlet(screenlets.Screenlet):
 		self.border_size_selected = 2
 
 		self.cursor_position = [-1,-1]
+		self.last_selected_element = [999,999]
 
 		self.auto_update = False
 
@@ -287,7 +288,7 @@ class FolderViewScreenlet(screenlets.Screenlet):
 		self.window.connect("window_state_event",self.state_event)
 		self.window.connect("drag-data-get", self.drag_data_get)
 		targets = [('text/uri-list', 0, 0)]
-		self.window.drag_source_set(gtk.gdk.BUTTON1_MASK,targets,gtk.gdk.ACTION_COPY)
+		self.window.drag_source_set(gtk.gdk.BUTTON1_MASK,targets,gtk.gdk.ACTION_MOVE)
 		# set as text-source
 		self.window.drag_source_add_text_targets()
 		#self.window.set_no_show_all(True)
@@ -299,14 +300,27 @@ class FolderViewScreenlet(screenlets.Screenlet):
 		#if gtk.gdk.WINDOW_STATE_ABOVE in widget.window.get_state():
 		pass#print widget.window.get_state()
 
-	def get_selected_element(self):
+	def get_selected_element(self, drag_direction=None):
+		#if drag_direction is None:
+		#	drag_direction = []
+		#drag_direction.append()
+		#return drag_direction
+
 		if self.expand2 == _('Use a scrollbar'):
 			self.list =  self.files_list_show[self.show_start:self.show_end]
 		else:
 			self.list =  self.files_list_show
+
+		if self.cursor_position != [-1,-1]:
+			self.last_selected_element = self.cursor_position
+
 		for elem in self.list:
-			if elem[2] == self.cursor_position:
-				return elem
+			if drag_direction == "in" or drag_direction == None:
+				if elem[2] == self.cursor_position:
+					return elem
+			elif drag_direction == "out":
+				if elem[2] == self.last_selected_element:
+					return elem
 	
 #-------------------------------------------
 # CLIPBOARD METHODS
@@ -327,13 +341,13 @@ class FolderViewScreenlet(screenlets.Screenlet):
 # DRAG N DROP METHODS
 #-------------------------------------------
 
-	def create_drag_icon (self):
+	def create_drag_icon (self, drag_direction):
 		"""Create drag_icon and drag_mask for drag-operation."""
-		elem = self.get_selected_element()
+		elem = self.get_selected_element(drag_direction)
+		
 		if elem:
 			self.__drag_icon = gtk.gdk.pixbuf_new_from_file_at_size(self.generate_icon_names(elem),int(self.icon_size*self.scale), int(self.icon_size*self.scale))
 			self.__drag_sel = elem
-
 	
 	def drag_end(self, widget, drag_context):
 		# call user-defined handler
@@ -342,23 +356,28 @@ class FolderViewScreenlet(screenlets.Screenlet):
 	
 	def drag_begin(self, widget, drag_context):
 		if self.cursor_position != [-1,-1]:
-			self.create_drag_icon()
+			drag_direction = "in"
+			self.create_drag_icon(drag_direction)
+			if self.__drag_icon:
+				self.window.drag_source_set_icon_pixbuf(self.__drag_icon)
+
+		if self.cursor_position == [-1,-1]:
+			drag_direction = "out"
+			self.create_drag_icon(drag_direction)
 			if self.__drag_icon:
 				self.window.drag_source_set_icon_pixbuf(self.__drag_icon)
 
 
 	def drag_data_get (self, widget, drag_context, selection_data, info, timestamp):
-
 		uri_list = 'file://'+ (self.__drag_sel[0].get_path())
 		selection_data.set(selection_data.target, 8,uri_list)
 
 	def on_drop (self, x, y, sel_data, timestamp):
-
 		filename = ''
 		filename = get_filename_on_drop(sel_data)
 		for f in filename:
 			if f != '':
-				os.system('cp ' + f + ' ' + chr(34) + self.folder_path_current + chr(34) + ' &')
+				os.system('mv ' + f + ' ' + chr(34) + self.folder_path_current + chr(34) + ' &')
 
 #-------------------------------------------
 # TOOLTIPS METHODS
@@ -658,13 +677,16 @@ class FolderViewScreenlet(screenlets.Screenlet):
 		ico = ''
 		exe = ''
 		found_name = False;
+		found_exe = False;
 
 		for line in tmp:
 			if line.startswith('Icon='):
 				ico = line.replace('Icon=','').replace('\n','')
 
 			elif line.startswith('Exec='):
-				exe = line.replace('Exec=','').replace('\n','')
+				if found_exe == False:
+					found_exe = True;
+					exe = line.replace('Exec=','').replace('\n','')
 
 			elif line.startswith('Name='):
 				if found_name == False:
@@ -1355,6 +1377,7 @@ class FolderViewScreenlet(screenlets.Screenlet):
 
 		#ctx.translate(((self.border_size + self.shadow_size)*2)*self.scale,(self.border_size + self.shadow_size+5)*self.scale)
 		ctx.set_source_rgba(*self.frame_color_selected)
+		
 		elem = self.get_selected_element()
 		if elem:
 			self.draw_rectangle_advanced(ctx,			# ctx
