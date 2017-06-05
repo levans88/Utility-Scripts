@@ -301,11 +301,6 @@ class FolderViewScreenlet(screenlets.Screenlet):
 		pass#print widget.window.get_state()
 
 	def get_selected_element(self, drag_direction=None):
-		#if drag_direction is None:
-		#	drag_direction = []
-		#drag_direction.append()
-		#return drag_direction
-
 		if self.expand2 == _('Use a scrollbar'):
 			self.list =  self.files_list_show[self.show_start:self.show_end]
 		else:
