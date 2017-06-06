@@ -287,6 +287,8 @@ class FolderViewScreenlet(screenlets.Screenlet):
 		self.scrollbar.connect("expose-event", self.sb_expose)
 		self.window.connect("window_state_event",self.state_event)
 		self.window.connect("drag-data-get", self.drag_data_get)
+		self.window.connect("key-press-event", self.on_key_press)
+
 		targets = [('text/uri-list', 0, 0)]
 		self.window.drag_source_set(gtk.gdk.BUTTON1_MASK,targets,gtk.gdk.ACTION_MOVE)
 		# set as text-source
@@ -962,6 +964,25 @@ class FolderViewScreenlet(screenlets.Screenlet):
 
 
 #-------------------------------------------
+# KEY PRESS METHODS
+#-------------------------------------------
+
+	def on_key_press(self, widget, event):
+		keyname = gtk.gdk.keyval_name(event.keyval)
+		#print(keyname)
+		if keyname == "Delete":
+			elem = self.get_selected_element()
+			if elem:
+				self.cp = "file://" +  elem[0].get_path()
+				self.on_menuitem_select('Delete')
+		if keyname == "Return" or keyname =="KP_Enter":
+			elem = self.get_selected_element()
+			if elem:
+				self.click_callback()
+
+
+
+#-------------------------------------------
 # OTHER SCREENLETS METHODS
 #-------------------------------------------
 
@@ -1130,7 +1151,8 @@ class FolderViewScreenlet(screenlets.Screenlet):
 			self.clipboard.set_with_data( [('x-special/gnome-copied-files', 0, 0),('text/uri-list',0,0)],self.clipboardGet, self._clipboardClearFuncCb, self.cp)
 			
 		elif id == _('Delete'):
-			if screenlets.show_question(self,_("Delete ") + self.cp + ' ?'):os.system('rm -rf ' + chr(34) + self.cp.replace('file://','') + chr(34))
+			if screenlets.show_question(self,_("Delete ") + self.cp + ' ?'):
+				os.system('rm -rf ' + chr(34) + self.cp.replace('file://','') + chr(34))
 		elif id == _('Paste'):
 			files = self.clipboard.wait_for_text().split('\n')
 			for f in files:
