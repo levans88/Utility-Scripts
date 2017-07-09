@@ -42,12 +42,16 @@ if [[ $1 ]]; then
 		xrandr --output DVI-I-1 --mode 1368x768_60.00 --rotate normal
 		xrandr --output DVI-D-1 --off
 		xrandr --output HDMI-1 --off
+		xrandr --output DP-1 --off
+		xrandr --output DVI-I-1-2 --off
 	fi
 
 	if [ $1 == "--office" ]; then
 		xrandr --output DVI-I-1 --mode 1920x1080 --rotate inverted --primary
 		xrandr --output DVI-D-1 --mode 1920x1080 --rotate inverted --left-of DVI-I-1
 		xrandr --output HDMI-1 --mode 1680x1050 --rotate left --right-of DVI-I-1
+		xrandr --output DP-1 --mode 1680x1050 --rotate left --right-of HDMI-1 
+		xrandr --output DVI-I-1-2 --mode 1920x1080 --below DVI-I-1 
 	fi
 else
 	echo "no argument supplied"
