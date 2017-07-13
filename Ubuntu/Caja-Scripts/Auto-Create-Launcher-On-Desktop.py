@@ -7,6 +7,26 @@
 # - Retrieves application for execution based on mime-type
 # - Retrieves icon based on mime-type
 # - Creates launcher on current user's desktop
+#
+# The application name for .tar files isn't found until mime_apps_3, 
+# where it's written as "org.gnome.FileRoller.desktop", which is 
+# found in "/usr/share/app-install/desktop" as one of the following:
+#   "file-roller:file-roller.desktop"
+#   "file-roller:org.gnome.FileRoller.desktop"
+#
+# The other application shown this way is Totem. I don't currently 
+# understand the ":" in the name. Neither apps launch from terminal.
+#
+# What's more odd is that tar files are handled by "engrampa" when
+# opened directly. Shortcuts to tar files aren't important, but I 
+# don't know what else might be affected.
+#
+# Todo:
+# - Override .tar launcher exec with Engrampa as application (discovered that
+#   Engrampa is a Caja extension). No one needs a launcher for this but still...
+# - Simplify getting mime-type without using extension, use "file" command
+#   (see get_mime_type function for example...)
+#
 
 import os
 import stat
@@ -68,6 +88,15 @@ def get_mime_type(path):
     file_extension = path.rpartition('.')[2]
     log("file_extension = " + file_extension)
 
+    # If the file didn't have an extension...
+    if file_extension == path:
+        log("file_extension == path")
+        # Should use this command to simplify script, was not previously aware...
+        mime_type = os.popen("file --mime-type -b " + path).read().rstrip()
+        log("mime_type = " + mime_type)
+        return mime_type
+
+    # If the file had an extension, look it up...
     if os.path.isfile("/etc/mime.types"):
         log("/etc/mime.types file found.")
         mime_types_file = open("/etc/mime.types", "r")
@@ -177,39 +206,32 @@ if path is not None and path is not "":
         log("Path is a file.")
         
         # Get mime-type
-        mime_type = get_mime_type(path)      
+        mime_type = get_mime_type(path)
+        app_name = ""
+        exec_string = ""
 
-        if mime_type is not None and mime_type is not "":
-            # Get application for execution based on mime-type
-            app_name = get_associated_application(mime_type).partition(".")[0]
+        # *** Override app_name's and exec_string's here ***
+        #
+        # Override app_name and exec_string for executable files
+        if mime_type == "application/x-executable":
+            app_name = path.rpartition("/")[2].rstrip()
+            exec_string = "Exec=" + app_name
+        else:
+            # Otherwise assign retrieved app_name's and exec_string's here...
+            if mime_type is not None and mime_type is not "":
+                # Get application for execution based on mime-type
+                app_name = get_associated_application(mime_type).partition(".")[0]
 
+                # Override app_name for sublime_text
+                if app_name == "sublime_text":
+                    app_name = "/opt/sublime_text/sublime_text"
+
+                exec_string = "Exec=" + app_name + " " + chr(34) + path + chr(34)
+        
         if app_name is not None and app_name is not "":
             # Set icon based on mime-type
             icon_string = "Icon=" + mime_type.replace("/", "-")
 
-            # *** Override exec_string's here ***
-            # 
-            # Use this area to append custom arguments to executables as needed.
-            #
-            # Other notes:
-            # The application name for .tar files isn't found until mime_apps_3, 
-            # where it's written as "org.gnome.FileRoller.desktop", which is 
-            # found in "/usr/share/app-install/desktop" as one of the following:
-            #   "file-roller:file-roller.desktop"
-            #   "file-roller:org.gnome.FileRoller.desktop"
-            #
-            # The other application shown this way is Totem. I don't currently 
-            # understand the ":" in the name. Neither apps launch from terminal.
-            #
-            # What's more odd is that tar files are handled by "engrampa" when
-            # opened directly. Shortcuts to tar files aren't important, but I 
-            # don't know what else might be affected.
-            #
-            # Todo: Override .tar launcher exec with engrampa as application
-            #
-
-            exec_string = "Exec=" + app_name + " " + chr(34) + path + chr(34)
-            
             # Create launcher
             create_launcher(path, exec_string, icon_string)
 else:

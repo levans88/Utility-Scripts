@@ -2,6 +2,7 @@
 
 #  Helder Fraga aka Whise (c) helderfraga@gmail.com
 #  Julien Lavergne (c) 2009 julien.lavergne@gmail.com
+#  Modified by Lenny Evans - lenny.evans3@gmail.com
 #
 #This program is free software; you can redistribute it and/or
 #modify it under the terms of the GNU General Public License
@@ -18,16 +19,6 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
 
-#-------------------------------------------
-# NOTES
-#-------------------------------------------
-#
-# Modified by Lenny Evans - lenny.evans3@gmail.com
-# 	- Double-click on icons instead of single-click
-#
-# TODO:
-# 	- Use system double-click sensitivity instead of defaulting to 400ms - LE
-#
 
 import time
 import screenlets
@@ -39,6 +30,7 @@ import cairo
 import gtk
 import pango
 import urllib
+import glob
 
 try:
 	import gnomedesktop
@@ -63,15 +55,18 @@ except:
 	screenlets.show_message(None,_('You don\'t have GIO python bindings installed. \nYou need to install python-gobject >= 2.15 .'))
 	sys.exit()
 
-
 #use gettext for translation
 import gettext
 
 _ = screenlets.utils.get_translator(__file__)
 
+global folderview_list
+folderview_list = []
+
 def tdoc(obj):
 	obj.__doc__ = _(obj.__doc__)
 	return obj
+
 
 @tdoc
 class FolderViewScreenlet(screenlets.Screenlet):
@@ -139,6 +134,7 @@ class FolderViewScreenlet(screenlets.Screenlet):
 	click_time = 0
 	show_line = 0
 	use_desktop_file_name_field = 1
+	window_auto_align = 0
 
 	# constructor
 	def __init__(self, **keyword_args):
@@ -200,11 +196,13 @@ class FolderViewScreenlet(screenlets.Screenlet):
 
 		self.add_option(BoolOption(_('Folder'),'show_title', self.show_title, _('Show Path in Title'), '',))
 
-		self.add_option(BoolOption(_('Folder'),'full_path', self.full_path, _('Display full path name in banner'), '',))
+		self.add_option(BoolOption(_('Folder'),'full_path', self.full_path, _('Display full path in banner'), '',))
 
 		self.add_option(BoolOption(_('Folder'),'show_line', self.show_line, _('Underline Title'), '',))
 
-		self.add_option(BoolOption(_('Folder'),'use_desktop_file_name_field', self.use_desktop_file_name_field, _('Use name field from .desktop file'), '',))
+		self.add_option(BoolOption(_('Folder'),'use_desktop_file_name_field', self.use_desktop_file_name_field, _('Use launcher "name" fields'), '',))
+
+		self.add_option(BoolOption(_('Folder'),'window_auto_align', self.window_auto_align, _('Auto align on primary display'), '',))
 
 		self.add_options_group(_('Look'), _('Settings colors and fonts'))
 
@@ -288,6 +286,7 @@ class FolderViewScreenlet(screenlets.Screenlet):
 		self.window.connect("window_state_event",self.state_event)
 		self.window.connect("drag-data-get", self.drag_data_get)
 		self.window.connect("key-press-event", self.on_key_press)
+		self.window.connect("configure-event", self.on_window_change)
 
 		targets = [('text/uri-list', 0, 0)]
 		self.window.drag_source_set(gtk.gdk.BUTTON1_MASK,targets,gtk.gdk.ACTION_MOVE)
@@ -370,8 +369,10 @@ class FolderViewScreenlet(screenlets.Screenlet):
 		selection_data.set(selection_data.target, 8,uri_list)
 
 	def on_drop (self, x, y, sel_data, timestamp):
+		print(sel_data)
 		filename = ''
 		filename = get_filename_on_drop(sel_data)
+		print(sel_data)
 		for f in filename:
 			if f != '':
 				os.system('mv ' + f + ' ' + chr(34) + self.folder_path_current + chr(34) + ' &')
@@ -554,6 +555,7 @@ class FolderViewScreenlet(screenlets.Screenlet):
 				f.write('show_title=' + str(self.show_title) + '\n')
 				f.write('show_line=' + str(self.show_line) + '\n')
 				f.write('use_desktop_file_name_field=' + str(self.use_desktop_file_name_field) + '\n')
+				f.write('window_auto_align=' + str(self.window_auto_align) + '\n')
 				f.write('expand=' + str(self.expand) +'\n')
 				f.write('banner_size=' + str(self.banner_size) + '\n')
 
@@ -889,6 +891,8 @@ class FolderViewScreenlet(screenlets.Screenlet):
 			self.add_submenuitem(_("Actions"), _("Actions"),[_('Copy'),_('Paste'),_('Delete')])
 			self.cp = "file://" +  elem[0].get_path()
 		self.add_menuitem("export", _("Save Theme"))
+		self.add_menuitem("lock_align_all", _("Lock and Align All"))
+		self.add_menuitem("unlock_all", _("Unlock All"))
 		self.add_default_menuitems()
 
 
@@ -986,8 +990,8 @@ class FolderViewScreenlet(screenlets.Screenlet):
 # OTHER SCREENLETS METHODS
 #-------------------------------------------
 
-
 	def on_init(self):
+		global folderview_list
 		#self.add_menuitem('copy', _('Copy'))
 		#self.add_menuitem('paste', _('Paste'))
 		#self.add_menuitem('delete', _('Delete'))
@@ -997,7 +1001,10 @@ class FolderViewScreenlet(screenlets.Screenlet):
 		#	self.thumbnailer.connect("worklist-finished", lambda m: self.icons_changed(0))
 		#self.window.window.set_keep_above(0)
 
-		# Timeout formerly 1000, not seeing any consequences but leaving a note in case - LE
+		# Add self to list of windows
+		folderview_list.append(self)
+
+		# Timeout formerly 1000, not seeing any consequences...
 		gobject.timeout_add(0, self.finish)
 
 
@@ -1020,11 +1027,52 @@ class FolderViewScreenlet(screenlets.Screenlet):
 			self.scrollbar.modify_bg(gtk.STATE_INSENSITIVE,  gtk.gdk.Color(self.frame_color[0]*65535,self.frame_color[1]*65535,self.frame_color[2]*65535,0)) # cor da seta a nao funcionar
 			self.scrollbar.modify_fg(gtk.STATE_NORMAL,  gtk.gdk.Color(self.color_title[0]*65535,self.color_title[1]*65535,self.color_title[2]*65535,0)) 
 		
-		# Automatically redraw after init (remove requirement for mouse over to finish drawing)
+		# Automatically redraw after init (no need for mouse over)
 		self.redraw_canvas()
-		
+
 		return False
-		
+	
+
+	# Called if window configuration has changed (moved, resized, re-ordered)...
+	# If window_auto_align option is enabled, keep windows on primary display.
+	def on_window_change(self, widget, event):
+		if self.window_auto_align == True:
+			# Additionally lock windows so they can't be dragged
+			self.lock_position = True
+
+			# Get display object
+			display = gtk.gdk.display_get_default()
+
+			# Get the object containing all screens combined as one screen
+			combined_screens = display.get_default_screen()
+
+			# Get the primary monitor from the combined_screens object
+			self.primary_monitor = int(combined_screens.get_primary_monitor())
+
+			# Get window position
+			window_position = self.window.get_position(self.window)
+
+			# Get window coordinates
+			window_x_pos = window_position[0]		
+			window_y_pos = window_position[1]
+			
+			# Get the geometry (position and dimensions) of primary monitor
+			primary_monitor_geometry = combined_screens.get_monitor_geometry(self.primary_monitor)
+
+			primary_monitor_x_pos = int(primary_monitor_geometry[0])
+			primary_monitor_width = int(primary_monitor_geometry[2])	
+			
+			# If window's x position is horizontally outside primary monitor...
+			if window_x_pos < primary_monitor_x_pos or window_x_pos > (primary_monitor_x_pos + primary_monitor_width):
+				
+				# Get window width
+				window_width = int(gtk.Window.get_size(self.window)[0])
+				
+				# Calculate new window position
+				new_window_x_pos = (primary_monitor_x_pos + primary_monitor_width) - window_width - 32
+				
+				# Move window to right edge of primary screen with 32 px gap
+				self.window.move(new_window_x_pos, window_y_pos)
 
 
 	def draw_text(self, ctx, text, x, y,  font, size, width, allignment=pango.ALIGN_LEFT,alignment=None,justify = False,weight = 0, ellipsize = pango.ELLIPSIZE_NONE,title=False):
@@ -1100,8 +1148,7 @@ class FolderViewScreenlet(screenlets.Screenlet):
 			screenlets.Screenlet.__setattr__(self, name, value)
 
 		if self.has_started:
-
-			if name in  ['folder_path','expand','pericons','showbyex','banner_size','sb_row','sb_column','show_title','show_line','showbyex','use_desktop_file_name_field']:
+			if name in  ['folder_path','expand','pericons','showbyex','banner_size','sb_row','sb_column','show_title','show_line','showbyex','use_desktop_file_name_field', 'window_auto_align']:
 				self.update_path_from_settings()
 				if self.expand2 == _('Use a scrollbar'):
 					self.update_scrollbar()	
@@ -1158,9 +1205,19 @@ class FolderViewScreenlet(screenlets.Screenlet):
 			for f in files:
 				if os.path.exists(str(f).replace('file://','')):
 					os.system('cp ' + chr(34) + str(f).replace('file://','') + chr(34)+ ' ' + chr(34) + self.folder_path_current+ chr(34))
-
-		elif id=="export":
+					
+		elif id == "export":
 			self.show_edit_dialog()
+
+		elif id == "lock_align_all":
+			for fv in folderview_list:
+				fv.lock_position = True
+				fv.window_auto_align = True
+
+		elif id == "unlock_all":
+			for fv in folderview_list:
+				fv.lock_position = False
+				fv.window_auto_align = False
 
 		if id in self.apps_list:
 			os.system(self.apps_execs[id]+ ' &')
@@ -1169,12 +1226,21 @@ class FolderViewScreenlet(screenlets.Screenlet):
 
 
 	def update(self):
-
-		self.redraw_canvas()
-		
+		self.redraw_canvas()	 
+		#if self.cursor_position != [-1,-1]:
+		#	print('...self.cursor_position is not [-1,-1]...')
+		#	self.window.present()
+		#else:
+		#	self.window.set_focus(None)
+		#
 		return True # keep on running this event
 
+
 	def on_mouse_enter (self, event):
+		# If auto align is enabled, ensure window position is still locked (prevents user unlocking via right-click...) 
+		if self.window_auto_align == True:
+			self.lock_position = True
+		
 		self.clicked = False
 		self.redraw_canvas()
 		self.show_tip()
@@ -1189,15 +1255,31 @@ class FolderViewScreenlet(screenlets.Screenlet):
 			self.redraw_canvas()
 			self.hide_tip()#self.timer1 = gobject.timeout_add(2000, self.hide_tip)
 
+
 	def motion_notify_event(self, widget, event):
 		"""Called when the mouse moves in the Screenlet's window."""
 		#if event.window == self.ww:
+		
+		#print(self)
+			#<FolderViewScreenlet object at 0x7f0bdfb3eaf0 (screenlets+Screenlet at 0x26e58e0)>	
+		#print(self.window)
+			#<gtk.Window object at 0x7fc661862be0 (GtkWindow at 0x20202a0)>
+		#print(widget)
+			#<gtk.Window object at 0x7fd9e6dafbe0 (GtkWindow at 0x1f8e2a0)>	
+		#print(widget.window)
+			#<gtk.gdk.Window object at 0x7ffb63f0e2d0 (GdkWindow at 0x16a16c0)>
+
+		#self.window.present()
+
 		before_cursor = self.cursor_position
 		self.set_current_cursor(event,widget)
+
 		if before_cursor <> self.cursor_position:
 			self.hide_tip()
 			self.show_tip()
 			self.update()
+
+		#self.window.present()
 
 
 	def set_current_cursor(self, event,widget):
@@ -1213,8 +1295,10 @@ class FolderViewScreenlet(screenlets.Screenlet):
 	def get_x(self, situation):
 		return situation[2][0] * self.icon_size * 2
 
+
 	def get_y(self,situation):
 		return situation[2][1] * self.icon_size * 2 + self.banner_size
+
 
 	def init_buffers (self):
 		"""(Re-)Create back-/foreground buffers"""
@@ -1248,6 +1332,7 @@ class FolderViewScreenlet(screenlets.Screenlet):
 			self.width = int((self.icon_size * 2 * self.rows + ((self.border_size+self.shadow_size)*2)+15 ) + 24/self.scale)
 			self.update_scrollbar()
 
+
 	def redraw_background(self):
 		# create context
 		self.ctx_back = self.__buffer_back.cairo_create()
@@ -1264,11 +1349,19 @@ class FolderViewScreenlet(screenlets.Screenlet):
 		if self.show_title == True:
 			if self.full_path == True:
 				bt = str(self.folder_path_current)
-			else:
+			
+			if self.full_path == False:
 				bt = str(self.folder_path_current).split('/')[len(str(self.folder_path_current).split('/'))-1]
+
+			if debug == True:
+				bt = "delete this feature..."
+				#bt = str(self.window).lstrip("<").rstrip(">")
+				print("bt: ")
+				print(bt)
+				print("\n")
 		else:
 			bt = ""
-
+		
 		if self.show_back and self.image_filename != "":
 			self.draw_scaled_image(self.ctx_back,0 ,0, urllib.unquote(self.image_filename.replace('file://','')), self.width-10+self.shadow_size, self.height-10+self.shadow_size)	
 		else:
