@@ -36,27 +36,55 @@
 #	Icon=/usr/share/app-install/icons/mate-preferences-desktop-display.svg
 #	Exec=/usr/local/bin/res.sh --office
 
+# Main functions
+tvMode () {
+	xrandr --output DVI-I-1 --mode 1368x768_60.00 --rotate normal
+	xrandr --output DVI-D-1 --off
+	xrandr --output HDMI-1 --off
+	xrandr --output DP-1 --off
+	xrandr --output DVI-I-1-2 --off
+}
+
+officeMode () {
+	xrandr --output DVI-I-1 --mode 1920x1080 --rotate inverted --primary
+	xrandr --output DVI-D-1 --mode 1920x1080 --rotate inverted --left-of DVI-I-1
+	xrandr --output HDMI-1 --mode 1680x1050 --rotate left --right-of DVI-I-1
+	xrandr --output DP-1 --mode 1680x1050 --rotate left --right-of HDMI-1 
+	xrandr --output DVI-I-1-2 --mode 1920x1080 --below DVI-I-1
+}
+
 # Check argument(s) and change screen resolution(s) accordingly
 if [[ $1 ]]; then
 	if [ $1 == "--tv" ]; then
-		xrandr --output DVI-I-1 --mode 1368x768_60.00 --rotate normal
-		xrandr --output DVI-D-1 --off
-		xrandr --output HDMI-1 --off
-		xrandr --output DP-1 --off
-		xrandr --output DVI-I-1-2 --off
+		tvMode
 	fi
 
 	if [ $1 == "--office" ]; then
-		xrandr --output DVI-I-1 --mode 1920x1080 --rotate inverted --primary
-		xrandr --output DVI-D-1 --mode 1920x1080 --rotate inverted --left-of DVI-I-1
-		xrandr --output HDMI-1 --mode 1680x1050 --rotate left --right-of DVI-I-1
-		xrandr --output DP-1 --mode 1680x1050 --rotate left --right-of HDMI-1 
-		xrandr --output DVI-I-1-2 --mode 1920x1080 --below DVI-I-1 
+		officeMode
 	fi
-else
-	echo "no argument supplied"
-	exit
+
+	if [ $1 != "--tv" ] && [ $1 != "--office" ]; then
+		echo "Invalid argument."
+		exit
+	fi
+fi
+
+# If there was no argument...
+if [[ ! $1 ]]; then
+
+	# Count the number of lines that have asterisk's in xrandr output
+	monitorCount="$(xrandr | grep -i "*" | wc -l)"
+
+	# Toggle output mode to opposite of current mode based on monitor count
+	if [ "$monitorCount" == "1" ]; then
+		officeMode
+	fi
+	
+	if [ "$monitorCount" != "1" ]; then
+		tvMode
+	fi
 fi
 
 # Scratch
 #argumentCount=$#
+#echo $monitorCount
