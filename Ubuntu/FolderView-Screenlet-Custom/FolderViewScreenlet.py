@@ -579,9 +579,12 @@ class FolderViewScreenlet(screenlets.Screenlet):
 # GET FILE LIST METHODS
 #-------------------------------------------
 
+	def getKey(item):
+		return item[1]
+
 	def populate_list(self, path):
 		# Generate the list of GFile and GFileInfos
-		# Used when creating a new FolderView	
+		# Used when creating a new FolderView
 
 		parent = gio.File(path)
 		self.files_list_show = []
@@ -639,7 +642,7 @@ class FolderViewScreenlet(screenlets.Screenlet):
 				self.columns = int(self.icon_num)/int(self.pericons)
 				self.columns = int(round(self.columns + 0.5))
 				if int((self.columns-1) * self.pericons) == self.icon_num:
-					self.columns = self.columns -1	
+					self.columns = self.columns -1
 		else:
 			if self.expand2 == _('Use a scrollbar'):
 				self.rows = self.sb_row #self.pericons
@@ -656,7 +659,46 @@ class FolderViewScreenlet(screenlets.Screenlet):
 			self.width = int((self.icon_size * 2 * self.rows + ((self.border_size+self.shadow_size)*2)+15 ) + 24/self.scale)
 		else:
 			self.width = int(((self.icon_size * 2 * self.rows) + ((self.border_size+self.shadow_size)*2)+15 ))
+		#print("///////////")
+		#original_height = self.height
 		self.height = int(self.icon_size * 2 * self.columns + self.banner_size + (self.border_size+self.shadow_size)*2+15)
+
+		# # Auto adjust other folderview window positions vertically as needed
+		# if self.height != original_height:
+		# 	altered_window = self.window
+		# 	altered_window_y_pos = int(self.window.get_position(altered_window)[1])
+		# 	altered_window_height = self.height
+
+		# 	folderview_array_sorted = []
+			
+		# 	# For each folderview...
+		# 	for fv in folderview_list:
+		# 		fv_pos = fv.window.get_position(fv.window)
+		# 		fv_x_pos = int(fv_pos[0])				
+		# 		fv_y_pos = int(fv_pos[1])
+
+		# 		folderview_array_sorted.append([fv, fv_x_pos, fv_y_pos])
+		# 		#sorted(folderview_array_sorted, key=getKey())
+		# 	folderview_array_sorted = sorted(folderview_array_sorted, key=lambda x: x[2], reverse=False)
+
+		# 	for thing in folderview_array_sorted:
+		# 		print(thing)
+
+		# 	for fvs in folderview_array_sorted:
+		# 		fv_y_pos = fvs[2]
+		# 		fv_x_pos = fvs[1]
+		# 		fv_height = fv.height
+
+		# 		# If the folderview's vertical position is after the altered window... 
+		# 		if fv_y_pos > altered_window_y_pos:
+		# 			# Move window up or down and consider it as the new altered_window
+		# 			new_window_y_pos = altered_window_y_pos + altered_window_height
+					
+		# 			fv.window.move(fv_x_pos, new_window_y_pos)
+
+		# 			altered_window = fv.window
+		# 			altered_window_y_pos = int(altered_window.get_position(altered_window)[1])
+		# 			altered_window_height = fv.height
 
 		x = 0
 		gc.collect()
@@ -1069,11 +1111,11 @@ class FolderViewScreenlet(screenlets.Screenlet):
 				window_width = int(gtk.Window.get_size(self.window)[0])
 				
 				# Calculate new window position
-				new_window_x_pos = (primary_monitor_x_pos + primary_monitor_width) - window_width - 32
+				new_window_x_pos = (primary_monitor_x_pos + primary_monitor_width) - (window_width + 32)
 				
 				# Move window to right edge of primary screen with 32 px gap
 				self.window.move(new_window_x_pos, window_y_pos)
-
+	
 
 	def draw_text(self, ctx, text, x, y,  font, size, width, allignment=pango.ALIGN_LEFT,alignment=None,justify = False,weight = 0, ellipsize = pango.ELLIPSIZE_NONE,title=False):
 		"""Draws text"""
