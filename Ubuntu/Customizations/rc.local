@@ -11,7 +11,4 @@
 #
 # By default this script does nothing.
 
-# Replace joystick device js0 with a symbolic link to js1
-# (I don't know why my wireless Xbox 360 controller is installed as js1 but this fixes it) 
-sudo ln -sf /dev/input/js1 /dev/input/js0
 exit 0
