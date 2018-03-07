@@ -2,6 +2,14 @@
 
 # Script to toggle custom display settings.
 
+
+# !!! BAD MATCH SOLUTION !!!
+
+# *** The Bytecc CAT5 VGA UTP Extender  WILL NOT pass EDID back from it's local port. ***
+# *** It's local VGA output then CANNOT be used because it won't do 1080 without an EDID.
+# *** I have to use either my VGA matrix or VGA splitter box and split to local & Extender.
+
+
 # ---------------
 # Notes and Setup
 # ---------------
@@ -36,21 +44,18 @@
 #	Icon=/usr/share/app-install/icons/mate-preferences-desktop-display.svg
 #	Exec=/usr/local/bin/res.sh --office
 
-# Main functions
 tvMode () {
-	xrandr --output DVI-I-1 --mode 1368x768_60.00 --rotate normal
-	xrandr --output DVI-D-1 --off
-	xrandr --output HDMI-1 --off
+	xrandr --output DVI-I-0 --mode 1280x720 --rotate normal
+	xrandr --output HDMI-0 --off
+	xrandr --output DVI-D-0 --off
 	xrandr --output DP-1 --off
-	xrandr --output DVI-I-1-2 --off
 }
 
 officeMode () {
-	xrandr --output DVI-I-1 --mode 1920x1080 --rotate inverted --primary
-	xrandr --output DVI-D-1 --mode 1920x1080 --rotate inverted --left-of DVI-I-1
-	xrandr --output HDMI-1 --mode 1680x1050 --rotate left --right-of DVI-I-1
-	xrandr --output DP-1 --mode 1680x1050 --rotate left --right-of HDMI-1 
-	xrandr --output DVI-I-1-2 --mode 1920x1080 --below DVI-I-1
+	xrandr --output DVI-I-0 --mode 1920x1080 --rotate inverted --primary
+	xrandr --output HDMI-0 --mode 1680x1050 --rotate left --right-of DVI-I-0
+	xrandr --output DVI-D-0 --mode 1920x1080 --rotate inverted --left-of DVI-I-0
+	xrandr --output DP-1 --mode 1680x1050 --rotate left --right-of HDMI-0
 }
 
 # Check argument(s) and change screen resolution(s) accordingly
