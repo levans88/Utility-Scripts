@@ -1,0 +1,64 @@
+
+Background
+----------
+Adding custom resolution(s) is necessary if VGA equipment (like extenders or matrix boxes) blocks the EDID coming to the computer. In that case 1920x1080 might not be available.
+
+It is *possible* that the nouveau driver allowed simply adding the missing resolutions, but the Nvidia binary driver gives error "badmatch"...
+
+The solution is to ignore the EDID for the SPECIFIC output port in question but allow the other ports to still use EDID. Mine analog output is DVI-I-0, which at the moment outputs over VGA to a 4-port matrix. The matrix then supplies the video signal to my primary LCD, a VGA extender box going to a TV over CAT5, and another TV over unamplified CAT5. So even if an EDID was to be returned, I don't know how it is resolved which would be used...
+
+
+Solution
+--------
+To ignore the EDID for a specific port, create a custom xorg.conf:
+
+	1) Have the Nvidia X Server Settings tool create the xorg.conf file first: 
+		- Find the option, "Save to X Configuration File"
+		- The usage of this file is not deprecated but most people no longer need it.
+	
+	2) If not already done, plug the monitor in digitally and "Acquire EDID" using the same Nvidia X Server Settings tool (I have two of the same so I queried the one already hooked up digitally).
+		- Install "edid-decode" if missing:
+
+			sudo apt-get install edid-decode
+		
+		- Decode the bin file:
+
+			edid-decode edid.bin
+		
+		- Now you will see the Monitor Ranges near the bottom of the output (V and H)
+		- Write them down
+
+	2) Modify your custom xorg.conf as follows:
+		- Under Section "Monitor", replace HorizSync and VertRefresh with valid values for the display obtained in the previous step, mine were:
+
+			HorizSync		30.0 - 80.0
+    		VertRefresh		55.0 - 76.0
+
+    	- Under Section "Device", add the following line (change port name as needed):
+    		
+    		Option "UseEdid" "DVI-I-0:False"
+
+    	- Without the port prefix, ALL EDID's will be ignored.
+
+	3) Put the file in /etc/X11
+
+	4) Reboot
+
+	5) Add any missing custom resolutions. I had to add 1280x720 as follows:
+
+		cvt 1280 720
+		
+		sudo xrandr --newmode "1280x720_60.00"   74.50  1280 1344 1472 1664  720 723 728 748 -hsync +vsync
+
+		sudo xrandr --addmode DVI-I-0 "1280x720_60.00"
+
+
+Links
+-----
+https://www.google.com/search?q=nvidia+x+server+display+configuration+missing+resolution+badmatch+edid&oq=nvidia+x+server+display+configuration+missing+resolution+badmatch+edid&aqs=chrome..69i57.15647j0j7&sourceid=chrome&ie=UTF-8
+https://askubuntu.com/questions/789513/how-to-set-native-resolution-via-xorg-conf-overriding-edid
+https://www.google.com/search?q=xorg.conf+native+1920&oq=xorg.conf+native+1920&aqs=chrome..69i57.5703j0j7&sourceid=chrome&ie=UTF-8
+https://www.google.com/search?q=linux+edid.bin+reader&oq=linux+edid.bin+reader&aqs=chrome..69i57.3143j0j7&sourceid=chrome&ie=UTF-8
+https://kodi.wiki/view/Creating_and_using_edid.bin_via_xorg.conf
+https://us.download.nvidia.com/XFree86/Linux-x86/375.39/README/displaydevicenames.html
+https://download.nvidia.com/XFree86/Linux-x86_64/304.137/README/configtwinview.html

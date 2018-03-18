@@ -2,14 +2,6 @@
 
 # Script to toggle custom display settings.
 
-
-# !!! BAD MATCH SOLUTION !!!
-
-# *** The Bytecc CAT5 VGA UTP Extender  WILL NOT pass EDID back from it's local port. ***
-# *** It's local VGA output then CANNOT be used because it won't do 1080 without an EDID.
-# *** I have to use either my VGA matrix or VGA splitter box and split to local & Extender.
-
-
 # ---------------
 # Notes and Setup
 # ---------------
@@ -30,6 +22,10 @@
 #	gksudo gedit ~/.local/share/applications/restv.desktop
 #	(also make resoffice.desktop)	
 #
+# --------
+# Optional
+# --------
+#
 # Paste in restv.desktop:
 #	[Desktop Entry]
 #	Type=Application
@@ -43,9 +39,12 @@
 #	Name=Res Office
 #	Icon=/usr/share/app-install/icons/mate-preferences-desktop-display.svg
 #	Exec=/usr/local/bin/res.sh --office
+#
+# ...or run res.sh without an argument to toggle between tv and office.
+#
 
 tvMode () {
-	xrandr --output DVI-I-0 --mode 1280x720 --rotate normal
+	xrandr --output DVI-I-0 --mode 1280x720_60.00 --rotate normal
 	xrandr --output HDMI-0 --off
 	xrandr --output DVI-D-0 --off
 	xrandr --output DP-1 --off
