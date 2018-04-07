@@ -23,18 +23,9 @@ PATH="$HOME/bin:$HOME/.local/bin:/usr/local/bin/pycharm-2017.1.4/bin:$PATH"
 
 # Nvidia Resolutions
 #
-
-# *** WRONG, "BadMatch" ***
-# 1368x768 59.88 Hz (CVT) hsync: 47.79 kHz; pclk: 85.25 MHz
-#cvt 1366 768
-#xrandr --newmode "1368x768_60.00"   85.25  1368 1440 1576 1784  768 771 781 798 -hsync +vsync
-#xrandr --addmode DVI-I-0 "1368x768_60.00"
-
-# *** WRONG, "BadMatch" ***
-# 1360x768 59.80 Hz (CVT) hsync: 47.72 kHz; pclk: 84.75 MHz
-#cvt 1360 768
-#xrandr --newmode "1360x768_60.00"   84.75  1360 1432 1568 1776  768 771 781 798 -hsync +vsync
-#xrandr --addmode DVI-I-0 "1360x768_60.00"
+# Since ignoring EDID and using custom xorg.conf, 1280x720 is not available automatically...
+xrandr --newmode "1280x720_60.00"   74.50  1280 1344 1472 1664  720 723 728 748 -hsync +vsync
+xrandr --addmode DVI-I-0 "1280x720_60.00"
 
 
 # Nouveau Resolutions
