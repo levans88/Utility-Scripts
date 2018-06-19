@@ -55,6 +55,19 @@ officeMode () {
 	xrandr --output HDMI-0 --mode 1680x1050 --rotate left --right-of DVI-I-0
 	xrandr --output DVI-D-0 --mode 1920x1080 --rotate inverted --left-of DVI-I-0
 	xrandr --output DP-1 --mode 1680x1050 --rotate left --right-of HDMI-0
+
+	# Wait for displays to settle before refreshing FolderView windows
+	sleep 2
+
+	# Get a count of the FolderView windows
+	fvWindowCount="$(wmctrl -l | grep FolderViewScreenlet.py | wc --lines)"
+
+	# Loop through FolderView windows, get ID's, activate each window to refresh it
+	for (( i=1; i<=$fvWindowCount; i++ ))
+	do
+		fvWindowID="$(wmctrl -l | grep FolderViewScreenlet.py | cut --delimiter=" " --fields=1 | cut --delimiter=$'\n' --fields=$i)"
+		wmctrl -i -a "$fvWindowID"
+	done
 }
 
 # Check argument(s) and change screen resolution(s) accordingly
