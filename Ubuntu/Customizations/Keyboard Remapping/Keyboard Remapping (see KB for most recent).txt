@@ -1,0 +1,57 @@
+
+I tried many ways to remap keys and make shortcuts. My biggest problem was WASD as arrow keys when left shift (NOT right shift) was pressed. It seems most tools for Linux don't distinguish between left shift and right shift.
+
+Here are some commands/tools I tried (more in links at bottom):
+
+	xbindkeys
+	xbindkeys-config
+	xev
+	xdotool
+	xmodmap
+	xkb
+	xkeycaps
+
+The only option I finally got to work was xmodmap. Supposedly xkb is the new proper way to deal with this, but I could only understand xmodmap so far and it works.
+
+Solution here:
+https://superuser.com/questions/483088/how-can-i-map-the-left-and-right-shift-key-individually
+https://chat.stackexchange.com/rooms/6235/discussion-between-mbfisher-and-trudbert
+https://wiki.archlinux.org/index.php/Xmodmap
+
+
+1) Reset / restore Keyboard Layout (undo xmodmap) to start AND if there is an issue:
+
+	setxkbmap -layout us
+
+2) Create custom .xmodmap file (#2, #3, and #4 already done - saved in GitHub now)
+
+	- clear all mappings using the shift key:
+		- "clear shift"
+
+	- replace keysym column 3 "mode_Switch+key" with "Shift_R+key" by:
+		- make the right shift key = the Mode_switch key (a key I don't have)
+
+			Mode_switch is the old-style (pre-XKB) name of the key that is called AltGr on many keyboard layouts. It is similar to Shift, in that when you press a key that corresponds to a character, you get a different character if Shift or AltGr is also pressed. 
+
+			"keysym Shift_R = Mode_switch"
+
+		- convert Shift keysym column to Shift_L
+			
+			"add Shift = Shift_L" 
+
+Result of keysym column changes:
+  1		2			3					4							5			6
+! Key	Shift+Key	mode_Switch+Key		mode_switch+Shift+Key	 	AltGr+Key 	AltGr+Shift+Key
+! Key	Shift_L+Key		Shift_R+Key		Shift_R+Shift_L+Key			AltGr+Key 	AltGr+Shift_L+Key
+
+3) Customize .xmodmap mappings according to new keysym columns, example:
+
+	keycode 25 = w Up W W W
+
+4) *** Important *** - the order of the .xmodmap file MUST be as follows:
+	- clear shift goes at the top
+	- then the mappings
+	- THEN the keysym column changes:
+
+		keysym Shift_R = Mode_switch 
+		add Shift = Shift_L 
