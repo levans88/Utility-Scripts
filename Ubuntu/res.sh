@@ -44,20 +44,20 @@
 #
 
 tvMode () {
-	xrandr --output DVI-I-0 --mode 1280x720_60.00 --rotate normal
+	xrandr --output DVI-D-0 --mode "1360x768" --rotate normal
+	xrandr --output DVI-I-1 --off
 	xrandr --output HDMI-0 --off
-	xrandr --output DVI-D-0 --off
 	xrandr --output DP-1 --off
 }
 
 officeMode () {
-	xrandr --output DVI-I-0 --mode 1920x1080 --rotate inverted --primary
-	xrandr --output HDMI-0 --mode 1680x1050 --rotate left --right-of DVI-I-0
-	xrandr --output DVI-D-0 --mode 1920x1080 --rotate inverted --left-of DVI-I-0
-	xrandr --output DP-1 --mode 1680x1050 --rotate left --right-of HDMI-0
+	xrandr --output DVI-D-0 --mode "1920x1080" --rotate inverted
+	xrandr --output HDMI-0 --mode "1920x1080" --rotate inverted --left-of DVI-D-0
+	xrandr --output DP-1 --mode "1680x1050_60.00" --rotate left --right-of DVI-D-0
+	xrandr --output DVI-I-1 --mode "1680x1050_60.00_2" --rotate left --right-of DP-1
 
 	# Wait for displays to settle before refreshing FolderView windows
-	sleep 2
+	sleep 5
 
 	# Get a count of the FolderView windows
 	fvWindowCount="$(wmctrl -l | grep FolderViewScreenlet.py | wc --lines)"
