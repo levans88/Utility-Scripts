@@ -44,15 +44,15 @@
 #
 
 tvMode () {
-	xrandr --output DVI-D-0 --mode "1360x768" --rotate normal
+	xrandr --output DVI-D-0 --mode "1368x768_60.00" --rotate normal
 	xrandr --output DVI-I-1 --off
 	xrandr --output HDMI-0 --off
 	xrandr --output DP-1 --off
 }
 
 officeMode () {
-	xrandr --output DVI-D-0 --mode "1920x1080" --rotate inverted
-	xrandr --output HDMI-0 --mode "1920x1080" --rotate inverted --left-of DVI-D-0
+	xrandr --output DVI-D-0 --mode "1920x1080"
+	xrandr --output HDMI-0 --mode "1920x1080" --left-of DVI-D-0
 	xrandr --output DP-1 --mode "1680x1050_60.00" --rotate left --right-of DVI-D-0
 	xrandr --output DVI-I-1 --mode "1680x1050_60.00_2" --rotate left --right-of DP-1
 
