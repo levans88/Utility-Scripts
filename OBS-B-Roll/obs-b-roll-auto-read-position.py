@@ -1,7 +1,17 @@
+
+# NOTE: This does not work because OBS does not actually know the monitor positions.
+
+
 import time
 from obswebsocket import obsws, requests
 from pynput import mouse, keyboard
+import json
+import os
+import sys
 import ctypes
+
+# Define path to OBS scene collection files
+scene_directory = os.path.join(os.getenv('APPDATA'), 'obs-studio', 'basic', 'scenes')
 
 # OBS WebSocket connection details
 password_file_path = r"C:\Temp\obs-web-socket-server.txt"
@@ -10,24 +20,6 @@ with open(password_file_path, "r") as file:
 
 host = 'localhost'
 port = 4455
-
-# Define boundaries for each display or quadrant
-display_boundaries = {
-    "4k1": (0, 0, 1920, 1080),
-    "4k2": (1920, 0, 3840, 1080),
-    "4k3": (0, 1080, 1920, 2160),
-    "4k4": (1920, 1080, 3840, 2160),
-    "Portrait1": (-1080, 0, 0, 1920),
-    "Portrait2": (3840, 0, 4920, 1920),
-    "Portrait3": (4920, 0, 6000, 1920),
-}
-
-display_boundaries_rdp = {
-    '1': (0, 0, 1080, 1920),       # Portrait - Center
-    '2': (-1080, 0, 0, 1920),      # Portrait - Left of Display1
-    '3': (-3000, 458, -1080, 1538), # Landscape - Top left
-    '4': (-3000, 1538, -1080, 2618) # Landscape - Bottom left below Display3
-}
 
 # Inactivity timeout and tracking variables
 InactivityTimeout = 5  # 5 seconds
@@ -41,19 +33,48 @@ IsRDPSession = False
 ws = obsws(host, port, password)
 ws.connect()
 
-# Check if the current session is an RDP session
+# Function to retrieve display boundaries from OBS files
+def get_display_boundaries_from_files():
+    boundaries = {}
+    # Determine which file to use based on session type
+    scene_file = 'SceneCollection2.json' if is_rdp_session() else 'SceneCollection1.json'
+    print(f"Selected scene file: {scene_file}")
+
+    # Full path to the scene file
+    scene_path = os.path.join(scene_directory, scene_file)
+
+    print(f"Opening scene file: {scene_path}")
+    # Load the scene collection file
+    with open(scene_path, 'r') as file:
+        data = json.load(file)
+        print(f"Loaded JSON data from {scene_file}")
+
+        # Iterate over each scene defined in 'scene_order'
+        for scene_ref in data['scene_order']:
+            scene_name = scene_ref['name']
+            print(f"Processing scene: {scene_name}")
+
+            # Find the actual scene details in 'sources' matching the scene name
+            scene = next((s for s in data['sources'] if s['name'] == scene_name and s['id'] == 'scene'), None)
+            if scene and 'settings' in scene and 'items' in scene['settings']:
+                for item in scene['settings']['items']:
+                    source_name = item['name']
+                    x = item['pos']['x']
+                    y = item['pos']['y']
+                    width = item['scale']['x'] * item['bounds']['x']
+                    height = item['scale']['y'] * item['bounds']['y']
+
+                    boundaries[source_name] = (x, y, x + width, y + height)
+                    print(f"Source '{source_name}' in scene '{scene_name}' boundaries set to: (x1={x}, y1={y}, x2={x + width}, y2={y + height})")
+            else:
+                print(f"No items found for scene '{scene_name}' or scene details are missing.")
+
+    print("Completed loading display boundaries from files.")
+    return boundaries
+
 def is_rdp_session():
     user32 = ctypes.windll.user32
     return bool(user32.GetSystemMetrics(0x1000))  # 0x1000 is SM_REMOTESESSION
-
-# Set display boundaries based on the current session type
-def setup_display_boundaries():
-    global display_boundaries
-    if IsRDPSession:
-        display_boundaries = display_boundaries_rdp
-        print("RDP session detected, using RDP display boundaries.")
-    else:
-        print("Local session detected, using local display boundaries.")
 
 # Recording controls
 def start_recording():
@@ -74,9 +95,6 @@ def stop_recording():
 def switch_scene(scene_name):
     global CurrentScene
     if scene_name != CurrentScene:
-        # Use SetCurrentScene for compatibility with OBS WebSocket v4.x
-        # scenes = ws.call(requests.GetSceneList())
-        # dd(response.getScenes())
         ws.call(requests.SetCurrentProgramScene(sceneName=scene_name))
         CurrentScene = scene_name
         print(f"Switched to scene: {scene_name}")
@@ -133,13 +151,13 @@ def setup_listeners():
 
 def dd(data):
     print(data)
-    exit()
+    sys.exit()
 
 # Run the input listeners
 if __name__ == "__main__":
     print("Starting OBS automation script.")
     IsRDPSession = is_rdp_session()
-    setup_display_boundaries()
+    display_boundaries = get_display_boundaries_from_files()  # Load display boundaries once at startup
     setup_listeners()
 
 # Disconnect from OBS WebSocket on exit
