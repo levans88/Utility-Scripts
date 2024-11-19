@@ -23,10 +23,10 @@ display_boundaries = {
 }
 
 display_boundaries_rdp = {
-    '1': (0, 0, 1080, 1920),       # Portrait - Center
-    '2': (-1080, 0, 0, 1920),      # Portrait - Left of Display1
-    '3': (-3000, 458, -1080, 1538), # Landscape - Top left
-    '4': (-3000, 1538, -1080, 2618) # Landscape - Bottom left below Display3
+    '1': (3000, -458, 4080, 1462), 
+    '2': (1920, -458, 3000, 1462), 
+    '3': (0, 0, 1920, 1080), 
+    '4': (0, 1080, 1920, 2160)
 }
 
 # Inactivity timeout and tracking variables
