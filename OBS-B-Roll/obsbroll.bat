@@ -6,6 +6,9 @@ set pythonScript="C:\Repos\Utility-Scripts\OBS-B-Roll\obs-b-roll.py"
 :: Change to OBS directory
 cd /d %obsPath%
 
+:: Set the title for the CMD window
+title OBS_B_Roll_Script_Instance
+
 :: Check if OBS is running
 tasklist /FI "IMAGENAME eq %programName%" | find /I "%programName%" >nul
 if %ERRORLEVEL% NEQ 0 (

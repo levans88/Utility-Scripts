@@ -1,7 +1,10 @@
 import time
 from obswebsocket import obsws, requests
 from pynput import mouse, keyboard
+import keyboard as kb
 import ctypes
+import win32gui
+import sys
 
 # OBS WebSocket connection details
 password_file_path = r"C:\Temp\obs-web-socket-server.txt"
@@ -36,6 +39,7 @@ IsRecording = False
 CurrentScene = None
 LastActiveDisplay = None
 IsRDPSession = False
+Exiting = False;
 
 # Connect to OBS WebSocket
 ws = obsws(host, port, password)
@@ -55,6 +59,9 @@ def setup_display_boundaries():
     else:
         print("Local session detected, using local display boundaries.")
 
+def get_active_window_title():
+    return win32gui.GetWindowText(win32gui.GetForegroundWindow())
+
 # Recording controls
 def start_recording():
     global IsRecording
@@ -69,6 +76,15 @@ def stop_recording():
         ws.call(requests.StopRecord())
         IsRecording = False
         print("Recording stopped.")
+
+def stop_recording_and_exit():
+    global Exiting
+    print("'e' key pressed, stopping recording and exiting.")
+    active_window_title = get_active_window_title()
+    if "OBS_B_Roll_Script_Instance" in active_window_title:
+        Exiting = True
+
+kb.on_press_key("e", lambda _: stop_recording_and_exit())
 
 # Scene switching based on input activity on specific displays/quadrants
 def switch_scene(scene_name):
@@ -96,8 +112,8 @@ def detect_active_display():
 
 # Monitor inactivity and control recording based on display-specific input
 def monitor_inactivity():
-    global LastInputTime, LastActiveDisplay
-    while True:
+    global LastInputTime, LastActiveDisplay, Exiting
+    while True and not Exiting:
         active_display = detect_active_display()  # Determine the current active display
         
         # Only switch scenes if the active display has changed
@@ -117,6 +133,8 @@ def monitor_inactivity():
             stop_recording()
         
         time.sleep(1)
+    stop_recording()
+    sys.exit("Exited the script successfully.")
 
 # Monitor input activity and update LastInputTime
 def on_activity(*args):
@@ -137,7 +155,7 @@ def dd(data):
 
 # Run the input listeners
 if __name__ == "__main__":
-    print("Starting OBS automation script.")
+    print("Starting OBS automation script. Press 'e' to stop recording and exit.")
     IsRDPSession = is_rdp_session()
     setup_display_boundaries()
     setup_listeners()
