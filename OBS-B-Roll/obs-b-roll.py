@@ -40,6 +40,7 @@ CurrentScene = None
 LastActiveDisplay = None
 IsRDPSession = False
 Exiting = False;
+KeepRecordingAlive = False;
 
 # Connect to OBS WebSocket
 ws = obsws(host, port, password)
@@ -79,12 +80,25 @@ def stop_recording():
 
 def stop_recording_and_exit():
     global Exiting
-    print("'e' key pressed, stopping recording and exiting.")
     active_window_title = get_active_window_title()
     if "OBS_B_Roll_Script_Instance" in active_window_title:
+        print("'e' key pressed, stopping recording and exiting.")
         Exiting = True
 
+def toggle_keep_recording_alive():
+    global KeepRecordingAlive, IsRecording
+    active_window_title = get_active_window_title()
+    if "OBS_B_Roll_Script_Instance" in active_window_title:
+        if IsRecording:
+            if not KeepRecordingAlive:
+                print("'k' key pressed, keep recording until pressed again.")
+                KeepRecordingAlive = True
+            else:
+                print("'k' key pressed, normal input monitoring restored.")
+                KeepRecordingAlive = False
+
 kb.on_press_key("e", lambda _: stop_recording_and_exit())
+kb.on_press_key("k", lambda _: toggle_keep_recording_alive())
 
 # Scene switching based on input activity on specific displays/quadrants
 def switch_scene(scene_name):
@@ -112,7 +126,7 @@ def detect_active_display():
 
 # Monitor inactivity and control recording based on display-specific input
 def monitor_inactivity():
-    global LastInputTime, LastActiveDisplay, Exiting
+    global LastInputTime, LastActiveDisplay, Exiting, KeepRecordingAlive
     while True and not Exiting:
         active_display = detect_active_display()  # Determine the current active display
         
@@ -122,16 +136,16 @@ def monitor_inactivity():
             if active_display:
                 switch_scene(active_display)
         
-        # Start or continue recording if activity is detected
-        if time.time() - LastInputTime <= InactivityTimeout:
-            print("Input detected, checking recording status.")
-            start_recording()
-        
-        # Stop recording after InactivityTimeout of no activity
-        elif time.time() - LastInputTime > InactivityTimeout:
-            print("No input detected, stopping recording.")
-            stop_recording()
-        
+        if not KeepRecordingAlive:
+            # Start or continue recording if activity is detected
+            if time.time() - LastInputTime <= InactivityTimeout:
+                print("Input detected, checking recording status.")
+                start_recording()
+            
+            # Stop recording after InactivityTimeout of no activity
+            elif time.time() - LastInputTime > InactivityTimeout:
+                print("No input detected, stopping recording.")
+                stop_recording()
         time.sleep(1)
     stop_recording()
     sys.exit("Exited the script successfully.")
